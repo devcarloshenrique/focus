@@ -1,0 +1,50 @@
+version: "3.8"
+
+services:
+  mysql:
+    image: "mysql:5.7"
+    container_name: focus-mysql
+    restart: unless-stopped
+    env_file: ./.env
+    environment:
+      - MYSQL_ROOT_PASSWORD:$MYSQL_ROOT_PASSWORD
+      - MYSQL_DATABASE:$MYSQL_DATABASE
+      - MYSQL_PASSWORD:$MYSQL_PASSWORD
+      - MYSQL_TCP_PORT:$MYSQL_DOCKER_PORT
+    ports:
+      - $MYSQL_LOCAL_PORT:$MYSQL_DOCKER_PORT
+    expose:
+      - $MYSQL_DOCKER_PORT
+    networks:
+      - app-network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      timeout: 5s
+      retries: 10
+
+  app:  
+    build: .
+    image: focus-api
+    container_name: focus-api
+    restart: always
+    command: npm start
+    depends_on:
+      mysql:
+        condition: service_healthy
+    networks:
+      - app-network
+    volumes:
+      - '.:/usr/app'
+    env_file: ./.env
+    environment:
+      - MYSQL_HOST:mysql
+      - MYSQL_LOCAL_PORT:$MYSQL_DOCKER_PORT
+      - MYSQL_DATABASE:$MYSQL_DATABASE
+      - MYSQL_USERNAME:$MYSQL_USERNAME
+      - MYSQL_PASSWORD:$MYSQL_PASSWORD
+    ports: 
+      - $NODE_LOCAL_PORT:$NODE_LOCAL_PORT
+
+networks:
+  app-network:
+    driver: bridge
